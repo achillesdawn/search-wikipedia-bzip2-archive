@@ -5,11 +5,30 @@ use eyre::Context;
 use tracing::info;
 
 use crate::archive::api::Page;
+use crate::{ARCHIVE_PATH, IndexEntry};
 
 mod api;
 
-pub fn archive_read(archive_path: PathBuf, offset: u64) -> eyre::Result<String> {
-    let mut file = std::fs::File::open(archive_path).expect("could not open archive path");
+pub fn find_in_archive(index: IndexEntry) -> eyre::Result<Page> {
+    let xml_string = archive_read_chunk(index.offset)?;
+
+    let pages = parse_xml_string(xml_string)?;
+
+    for page in pages {
+        if page.id == index.page_id {
+            return Ok(page);
+        }
+    }
+
+    eyre::bail!("could not find index entry")
+}
+
+fn parse_xml_string(xml_string: String) -> eyre::Result<Vec<Page>> {
+    quick_xml::de::from_str(&xml_string).wrap_err("could not parse xml string")
+}
+
+fn archive_read_chunk(offset: u64) -> eyre::Result<String> {
+    let mut file = std::fs::File::open(ARCHIVE_PATH.clone()).expect("could not open archive path");
 
     file.seek(SeekFrom::Start(offset))
         .wrap_err("could not seek to offset")?;
@@ -35,13 +54,7 @@ mod tests {
 
     #[test]
     fn test_archive_read() {
-        let archive_base_path =
-            std::path::PathBuf::from("/run/media/miguel/Blue/backup/novaera/rust/wiki_archive");
-
-        let archive_path =
-            archive_base_path.join("enwiki-20220901-pages-articles-multistream.xml.bz2");
-
-        let xml_string = archive_read(archive_path, 583381911).unwrap();
+        let xml_string = archive_read_chunk(583381911).unwrap();
 
         dbg!(xml_string);
     }
@@ -50,13 +63,7 @@ mod tests {
     fn test_archive_parse() {
         tracing_subscriber::fmt().init();
 
-        let archive_base_path =
-            std::path::PathBuf::from("/run/media/miguel/Blue/backup/novaera/rust/wiki_archive");
-
-        let archive_path =
-            archive_base_path.join("enwiki-20220901-pages-articles-multistream.xml.bz2");
-
-        let xml_string = archive_read(archive_path, 583381911).unwrap();
+        let xml_string = archive_read_chunk(583381911).unwrap();
 
         let pages: Vec<Page> = quick_xml::de::from_str(&xml_string).unwrap();
 
