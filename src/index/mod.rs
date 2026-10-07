@@ -1,9 +1,11 @@
-use std::{io::Read, path::PathBuf, time::Instant};
+use std::{io::Read, time::Instant};
 
 use boyer_moore_magiclen::BMByte;
 use tracing::{debug, info};
 
-use crate::{BUFFER_SIZE, IndexEntry};
+use crate::{INDEX_PATH, IndexEntry};
+
+pub const BUFFER_SIZE: usize = 1024 * 8;
 
 fn needle_find_entries(needle: &BMByte, data_buffer: &str) -> Vec<IndexEntry> {
     let mut entries = Vec::new();
@@ -32,8 +34,8 @@ fn needle_find_entries(needle: &BMByte, data_buffer: &str) -> Vec<IndexEntry> {
     entries
 }
 
-pub fn seach_index_entries(index_path: PathBuf) -> Vec<IndexEntry> {
-    let file = std::fs::File::open(index_path).expect("could not open archive path");
+pub fn seach_index_entries(query: &str) -> Vec<IndexEntry> {
+    let file = std::fs::File::open(INDEX_PATH.clone()).expect("could not open archive path");
 
     let mut decompresor = bzip2::read::MultiBzDecoder::new(file);
 
@@ -42,7 +44,7 @@ pub fn seach_index_entries(index_path: PathBuf) -> Vec<IndexEntry> {
 
     let now = Instant::now();
 
-    let needle = boyer_moore_magiclen::BMByte::from("Harmonic ").unwrap();
+    let needle = boyer_moore_magiclen::BMByte::from(query).unwrap();
 
     let mut entries = Vec::new();
 

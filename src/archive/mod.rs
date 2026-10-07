@@ -1,8 +1,6 @@
 use std::io::{Read, Seek, SeekFrom};
-use std::path::PathBuf;
 
 use eyre::Context;
-use tracing::info;
 
 use crate::archive::api::Page;
 use crate::{ARCHIVE_PATH, IndexEntry};
