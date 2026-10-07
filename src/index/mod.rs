@@ -3,9 +3,9 @@ use std::{io::Read, path::PathBuf, time::Instant};
 use boyer_moore_magiclen::BMByte;
 use tracing::{debug, info};
 
-use crate::IndexEntry;
+use crate::{BUFFER_SIZE, IndexEntry};
 
-pub fn needle_find_entries(needle: &BMByte, data_buffer: &str) -> Vec<IndexEntry> {
+fn needle_find_entries(needle: &BMByte, data_buffer: &str) -> Vec<IndexEntry> {
     let mut entries = Vec::new();
 
     if needle.find_first_in(data_buffer).is_none() {
@@ -21,7 +21,7 @@ pub fn needle_find_entries(needle: &BMByte, data_buffer: &str) -> Vec<IndexEntry
         {
             let entry = IndexEntry {
                 offset: offset.parse().unwrap(),
-                inner_offset: inner_offset.parse().unwrap(),
+                page_id: inner_offset.parse().unwrap(),
                 title: title.to_owned(),
             };
 
@@ -32,12 +32,10 @@ pub fn needle_find_entries(needle: &BMByte, data_buffer: &str) -> Vec<IndexEntry
     entries
 }
 
-pub fn collect_entries(index_path: PathBuf) -> Vec<IndexEntry> {
+pub fn seach_index_entries(index_path: PathBuf) -> Vec<IndexEntry> {
     let file = std::fs::File::open(index_path).expect("could not open archive path");
 
     let mut decompresor = bzip2::read::MultiBzDecoder::new(file);
-
-    const BUFFER_SIZE: usize = 1024 * 8;
 
     let mut buffer = [0u8; BUFFER_SIZE];
     let mut last_idx = BUFFER_SIZE;
