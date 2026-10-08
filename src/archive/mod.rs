@@ -7,8 +7,10 @@ use crate::{ARCHIVE_PATH, IndexEntry};
 
 mod api;
 
-pub fn find_in_archive(index: IndexEntry) -> eyre::Result<Page> {
+pub fn find_in_archive(index: &IndexEntry) -> eyre::Result<Page> {
     let xml_string = archive_read_chunk(index.offset)?;
+
+    // debug!(xml_string);
 
     let pages = parse_xml_string(xml_string)?;
 

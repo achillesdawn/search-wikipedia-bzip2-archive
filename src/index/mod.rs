@@ -1,11 +1,14 @@
-use std::{io::Read, time::Instant};
+use std::{
+    io::{BufReader, Read},
+    time::Instant,
+};
 
 use boyer_moore_magiclen::BMByte;
 use tracing::{debug, info};
 
 use crate::{INDEX_PATH, IndexEntry};
 
-pub const BUFFER_SIZE: usize = 1024 * 8;
+pub const BUFFER_SIZE: usize = 1024 * 1024;
 
 fn needle_find_entries(needle: &BMByte, data_buffer: &str) -> Vec<IndexEntry> {
     let mut entries = Vec::new();
@@ -34,21 +37,17 @@ fn needle_find_entries(needle: &BMByte, data_buffer: &str) -> Vec<IndexEntry> {
     entries
 }
 
-pub fn seach_index_entries(query: &str) -> Vec<IndexEntry> {
-    let file = std::fs::File::open(INDEX_PATH.clone()).expect("could not open archive path");
-
-    let mut decompresor = bzip2::read::MultiBzDecoder::new(file);
-
+fn read_index(
+    mut decompressor: bzip2::read::MultiBzDecoder<std::io::BufReader<std::fs::File>>,
+    needle: &BMByte,
+    limit: usize,
+) -> Vec<IndexEntry> {
     let mut buffer = [0u8; BUFFER_SIZE];
     let mut last_idx = BUFFER_SIZE;
 
-    let now = Instant::now();
-
-    let needle = boyer_moore_magiclen::BMByte::from(query).unwrap();
-
     let mut entries = Vec::new();
 
-    while let Ok(n) = decompresor.read(&mut buffer[BUFFER_SIZE - last_idx..]) {
+    while let Ok(n) = decompressor.read(&mut buffer[BUFFER_SIZE - last_idx..]) {
         if n == 0 {
             // EOF
             break;
@@ -63,17 +62,37 @@ pub fn seach_index_entries(query: &str) -> Vec<IndexEntry> {
         }
 
         if let Ok(s) = std::str::from_utf8(&buffer[..last_idx]) {
-            let new_entries = needle_find_entries(&needle, s);
+            let new_entries = needle_find_entries(needle, s);
 
             for entry in new_entries.iter() {
                 info!(entry = entry.title);
             }
 
             entries.extend(new_entries);
+
+            if entries.len() > limit {
+                break;
+            }
         }
 
         buffer.copy_within(last_idx.., 0);
     }
+
+    entries
+}
+
+pub fn search_all_index_entries(query: &str, limit: usize) -> Vec<IndexEntry> {
+    let file = std::fs::File::open(INDEX_PATH.clone()).expect("could not open archive path");
+
+    let reader = BufReader::new(file);
+
+    let decompressor = bzip2::read::MultiBzDecoder::new(reader);
+
+    let now = Instant::now();
+
+    let needle = boyer_moore_magiclen::BMByte::from(query).unwrap();
+
+    let entries = read_index(decompressor, &needle, limit);
 
     let elapsed = now.elapsed().as_secs();
 

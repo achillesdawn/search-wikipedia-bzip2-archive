@@ -2,8 +2,9 @@ mod archive;
 mod constants;
 mod index;
 
+pub use archive::find_in_archive;
 pub use constants::{ARCHIVE_PATH, INDEX_PATH};
-pub use index::seach_index_entries;
+pub use index::search_all_index_entries;
 
 #[derive(Debug)]
 pub struct IndexEntry {
