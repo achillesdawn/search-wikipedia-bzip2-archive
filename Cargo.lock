@@ -280,6 +280,7 @@ dependencies = [
  "boyer-moore-magiclen",
  "bzip2",
  "eyre",
+ "memchr",
  "quick-xml",
  "serde",
  "tracing",
